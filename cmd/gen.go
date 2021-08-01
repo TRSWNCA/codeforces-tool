@@ -10,13 +10,14 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/xalanq/cf-tool/client"
 	"github.com/xalanq/cf-tool/config"
 	"github.com/xalanq/cf-tool/util"
 )
 
-func parseTemplate(source string, cfg *config.Config) string {
+func parseTemplate(source string, cln *client.Client) string {
 	now := time.Now()
-	source = strings.ReplaceAll(source, "$%U%$", cfg.Username)
+	source = strings.ReplaceAll(source, "$%U%$", cln.Handle)
 	source = strings.ReplaceAll(source, "$%Y%$", fmt.Sprintf("%v", now.Year()))
 	source = strings.ReplaceAll(source, "$%M%$", fmt.Sprintf("%02v", int(now.Month())))
 	source = strings.ReplaceAll(source, "$%D%$", fmt.Sprintf("%02v", now.Day()))
@@ -26,12 +27,12 @@ func parseTemplate(source string, cfg *config.Config) string {
 	return source
 }
 
-func readTemplateSource(path string, cfg *config.Config) (source string, err error) {
+func readTemplateSource(path string, cln *client.Client) (source string, err error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		return
 	}
-	source = parseTemplate(string(b), cfg)
+	source = parseTemplate(string(b), cln)
 	return
 }
 
@@ -55,15 +56,15 @@ func gen(source, currentPath, ext string) error {
 }
 
 // Gen command
-func Gen(args map[string]interface{}) error {
-	cfg := config.New(config.ConfigPath)
+func Gen() (err error) {
+	cfg := config.Instance
 	if len(cfg.Template) == 0 {
 		return errors.New("You have to add at least one code template by `cf config`")
 	}
-
+	alias := Args.Alias
 	var path string
 
-	if alias, ok := args["<alias>"].(string); ok {
+	if alias != "" {
 		templates := cfg.TemplateByAlias(alias)
 		if len(templates) < 1 {
 			return fmt.Errorf("Cannot find any template with alias %v", alias)
@@ -82,17 +83,17 @@ func Gen(args map[string]interface{}) error {
 		path = cfg.Template[cfg.Default].Path
 	}
 
-	source, err := readTemplateSource(path, cfg)
+	cln := client.Instance
+	source, err := readTemplateSource(path, cln)
 	if err != nil {
-		return err
+		return
 	}
 
 	currentPath, err := os.Getwd()
 	if err != nil {
-		return err
+		return
 	}
 
 	ext := filepath.Ext(path)
-	gen(source, currentPath, ext)
-	return err
+	return gen(source, currentPath, ext)
 }

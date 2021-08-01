@@ -2,59 +2,57 @@ package client
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
-	"regexp"
+	"path/filepath"
 
 	"github.com/fatih/color"
 	"github.com/xalanq/cf-tool/cookiejar"
-	"github.com/xalanq/cf-tool/util"
 )
 
 // Client codeforces client
 type Client struct {
-	Jar            *cookiejar.Jar  `json:"cookies"`
-	Username       string          `json:"username"`
-	Ftaa           string          `json:"ftaa"`
-	Bfaa           string          `json:"bfaa"`
-	LastSubmission *SaveSubmission `json:"last_submission"`
-	Host           string          `json:"host"`
+	Jar            *cookiejar.Jar `json:"cookies"`
+	Handle         string         `json:"handle"`
+	HandleOrEmail  string         `json:"handle_or_email"`
+	Password       string         `json:"password"`
+	Ftaa           string         `json:"ftaa"`
+	Bfaa           string         `json:"bfaa"`
+	LastSubmission *Info          `json:"last_submission"`
+	host           string
+	proxy          string
 	path           string
 	client         *http.Client
 }
 
-func formatHost(host string) (string, error) {
-	if len(host) == 0 {
-		return "https://codeforces.com", nil
-	}
-	reg := regexp.MustCompile(`https?://[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)+/*`)
-	if !reg.MatchString(host) {
-		return "", fmt.Errorf(`Invalid host "%v"`, host)
-	}
-	for host[len(host)-1:] == "/" {
-		host = host[:len(host)-1]
-	}
-	return host, nil
-}
+// Instance global client
+var Instance *Client
 
-// New client
-func New(path string) *Client {
+// Init initialize
+func Init(path, host, proxy string) {
 	jar, _ := cookiejar.New(nil)
-	c := &Client{Jar: jar, LastSubmission: nil, path: path, client: nil}
-	if path != "" {
-		c.load()
+	c := &Client{Jar: jar, LastSubmission: nil, path: path, host: host, proxy: proxy, client: nil}
+	if err := c.load(); err != nil {
+		color.Red(err.Error())
+		color.Green("Create a new session in %v", path)
 	}
-	c.client = &http.Client{Jar: c.Jar}
-	var err error
-	c.Host, err = formatHost(c.Host)
-	if err != nil {
-		color.Red(err.Error() + `. Use default host "https://codeforces.com"`)
-		color.Red(`Please use "cf config" to set a valid host later`)
-		c.Host = "https://codeforces.com"
+	Proxy := http.ProxyFromEnvironment
+	if len(proxy) > 0 {
+		proxyURL, err := url.Parse(proxy)
+		if err != nil {
+			color.Red(err.Error())
+			color.Green("Use default proxy from environment")
+		} else {
+			Proxy = http.ProxyURL(proxyURL)
+		}
 	}
-	return c
+	c.client = &http.Client{Jar: c.Jar, Transport: &http.Transport{Proxy: Proxy}}
+	if err := c.save(); err != nil {
+		color.Red(err.Error())
+	}
+	Instance = c
 }
 
 // load from path
@@ -78,31 +76,11 @@ func (c *Client) load() (err error) {
 func (c *Client) save() (err error) {
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err == nil {
+		os.MkdirAll(filepath.Dir(c.path), os.ModePerm)
 		err = ioutil.WriteFile(c.path, data, 0644)
 	}
 	if err != nil {
 		color.Red("Cannot save session to %v\n%v", c.path, err.Error())
 	}
 	return
-}
-
-// SetHost set host for Codeforces
-func (c *Client) SetHost() (err error) {
-	host, err := formatHost(c.Host)
-	if err != nil {
-		host = "https://codeforces.com"
-	}
-	color.Green("Current host domain is %v", host)
-	color.Cyan(`Set a new host domain (e.g. "https://codeforces.com"`)
-	color.Cyan(`Note: Don't forget the "http://" or "https://"`)
-	for {
-		host, err = formatHost(util.ScanlineTrim())
-		if err == nil {
-			break
-		}
-		color.Red(err.Error())
-	}
-	c.Host = host
-	color.Green("New host domain is %v", host)
-	return c.save()
 }

@@ -1,7 +1,7 @@
 # Codeforces Tool
 
 [![Github release](https://img.shields.io/github/release/xalanq/cf-tool.svg)](https://github.com/xalanq/cf-tool/releases)
-[![platform](https://img.shields.io/badge/platform-win%20%7C%20osx%20%7C%20linux-blue.svg)](https://github.com/xalanq/cf-tool/releases)
+[![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/xalanq/cf-tool/releases)
 [![Build Status](https://travis-ci.org/xalanq/cf-tool.svg?branch=master)](https://travis-ci.org/xalanq/cf-tool)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xalanq/cf-tool)](https://goreportcard.com/report/github.com/xalanq/cf-tool)
 [![Go Version](https://img.shields.io/badge/go-%3E%3D1.12-green.svg)](https://github.com/golang)
@@ -15,8 +15,8 @@ Codeforces Tool 是 [Codeforces](https://codeforces.com) 的命令行界面的�
 
 ## 特点
 
+* 支持 Contests、Gym、Groups 和 acmsguru
 * 支持 Codeforces 中的所有编程语言
-* 支持 contests 和 gym
 * 提交代码
 * 动态刷新提交后的情况
 * 拉取问题的样例
@@ -25,6 +25,7 @@ Codeforces Tool 是 [Codeforces](https://codeforces.com) 的命令行界面的�
 * 从指定模板生成代码（包括时间戳，作者等信息）
 * 列出某场比赛的所有题目的整体信息
 * 用默认的网页浏览器打开题目页面、榜单、提交页面等
+* 设置网络代理，设置镜像站
 * 丰富多彩的命令行
 
 欢迎大家一起完善这个工具呀，欢迎Pull requests。
@@ -33,27 +34,31 @@ Codeforces Tool 是 [Codeforces](https://codeforces.com) 的命令行界面的�
 
 ## 安装
 
-你可以从[这里](https://github.com/xalanq/cf-tool/releases)直接下载一个可执行文件，直接用就好啦。
+你可以从[这里](https://github.com/xalanq/cf-tool/releases)直接下载一个可执行文件。
+
+然后就能直接用啦~
 
 或者你可以把整个 repo 给 clone 下来，然后自己编译 (go >= 1.12)：
 
 ```plain
-$ git clone https://github.com/xalanq/cf-tool
-$ cd cf-tool
+$ go get github.com/xalanq/cf-tool
+$ cd $GOPATH/src/github.com/xalanq/cf-tool
 $ go build -ldflags "-s -w" cf.go
 ```
+
+如果你不知道 `$GOPATH` 是什么，请看一下这篇文章 <https://github.com/golang/go/wiki/GOPATH>.
 
 ## 使用方法
 
 以下简单模拟一场比赛的流程。
 
- `cf race 1136` 
+ `cf race 1136` 或者 `cf race https://codeforces.com/contest/1136`
 
-要开始打 1136 这场比赛了！其中 1136 可以从比赛的链接获取，比方说这个例子的比赛链接就为<https://codeforces.com/contest/1136>。
+就开始打 1136 这场比赛了！
 
 如果比赛还未开始，则该命令会进行倒计时。比赛已开始或倒计时完后，工具会自动用默认浏览器打开比赛的题目界面与所有题目页面，并拉取样例到本地。
 
- `cd 1136/a` 
+ `cd ./cf/contest/1136/a` （或者是其他的路径，请看屏幕前的提示）
 
 进入 A 题的目录，此时该目录下会包含该题的样例。
 
@@ -82,37 +87,59 @@ $ go build -ldflags "-s -w" cf.go
 用浏览器打开榜单，查看排名。
 
 ```plain
-首先你得用 "cf config" 命令来配置一下用户名、密码和代码模板
+首先你得用 "cf config" 命令来配置一下用户名、密码和代码模板。
 
-如果你想用本工具打比赛，那么最好用 "cf race 1111" 命令，其中 "1111" 是比赛的 id
+如果你想用本工具打比赛，那么最好用 "cf race" 命令。
 
 支持的命令:
   cf config
-  cf submit [(<contest-id> <problem-id>)] [<filename>]
-  cf list [<contest-id>]
-  cf parse [<contest-id>] [<problem-id>]
+  cf submit [-f <file>] [<specifier>...]
+  cf list [<specifier>...]
+  cf parse [<specifier>...]
   cf gen [<alias>]
-  cf test [<filename>]
-  cf watch [all] [<contest-id>] [<problem-id>]
-  cf open [<contest-id>] [<problem-id>]
-  cf stand [<contest-id>]
-  cf sid [<submission-id>] [<contest-id>]
-  cf race <contest-id>
-  cf pull [ac] [<contest-id>] [<problem-id>]
-  cf clone [ac] <username>
+  cf test [<file>]
+  cf watch [all] [<specifier>...]
+  cf open [<specifier>...]
+  cf stand [<specifier>...]
+  cf sid [<specifier>...]
+  cf race [<specifier>...]
+  cf pull [ac] [<specifier>...]
+  cf clone [ac] [<handle>]
   cf upgrade
+
+参数:
+  -h --help            帮助。
+  --version            显示版本。
+  -f <file>, --file <file>, <file>
+                       文件的路径，例如 "a.cpp"、"./temp/a.cpp"
+  <specifier>          任何有用的文本，例如
+                       "https://codeforces.com/contest/100"、
+                       "https://codeforces.com/contest/180/problem/A"、
+                       "https://codeforces.com/group/Cw4JRyRGXR/contest/269760"、
+                       "1111A"、"1111"、"a"、"Cw4JRyRGXR"。
+                       你可以任意组合多个 <specifier> 来说明你的需求。
+  <alias>              模板的名字，比如 "cpp"。
+  ac                   是否只获取 Accpeted 的代码。
 
 例子:
   cf config            配置 cf-tool。
-  cf submit            如果当前路径是 "<contest-id>/<problem-id>" 那 cf 会找到匹配某个模板的代码，
-                       然后提交到 <contest-id> 这场比赛的 <problem-id> 题目。
-  cf submit a.cpp
-  cf submit 100 a
-  cf submit 100 a a.cpp
+  cf submit            cf 会自动检测你需要提交的文件。
+  cf submit -f a.cpp
+  cf submit https://codeforces.com/contest/100/A
+  cf submit -f a.cpp 100A 
+  cf submit -f a.cpp 100 a
+  cf submit contest 100 a
+  cf submit gym 100001 a
   cf list              列出当前比赛的题目通过、时限等信息。
   cf list 1119         
-  cf parse 100         获取比赛 id 为 100 的所有题目的样例到文件夹 "./100/<problem-id>" 下。
-  cf parse 100 a       获取比赛 id 为 100 的题目 a 的样例到文件夹 "./100/a" 下。
+  cf parse 100         获取 contest 100 的所有题目的样例到文件夹
+                       "{cf}/{contest}/100/" 中。
+  cf parse gym 100001a
+                       获取 gym 100001 的 a 题的样例到文件夹
+                       "{cf}/{gym}/100001/a" 中。
+  cf parse gym 100001
+                       获取 gym 100001 的所有题目的样例到文件夹
+                       "{cf}/{gym}/100001" 中。
   cf parse             获取当前比赛的当前题目到当前文件夹下。
   cf gen               用默认的模板生成一份代码到当前文件夹下。
   cf gen cpp           用名字为 "cpp" 的模板来生成一份代码到当前文件夹下。
@@ -120,8 +147,8 @@ $ go build -ldflags "-s -w" cf.go
                        新建两个文件 "inK.txt" 和 "ansK.txt" 即可，其中 K 是包含 0~9 的字符串。
   cf watch             查看自己在当前比赛的最后 10 次提交结果。
   cf watch all         查看自己在当前比赛的全部提交结果
-  cf open 1136 a       用默认的浏览器打开比赛 id 为 1136 的题目 a。
-  cf open 1136         用默认的浏览器打开比赛 id 为 1136 的总览页面。
+  cf open 1136a        用默认的浏览器打开比赛 contest 1136, problem a.
+  cf open gym 100136   用默认的浏览器打开比赛 gym 100136.
   cf stand             用默认的浏览器打开当前比赛的榜单。
   cf sid 52531875      用默认的浏览器打开 52531875 这个提交页面。
   cf sid               打开最后一次提交的页面。
@@ -134,30 +161,24 @@ $ go build -ldflags "-s -w" cf.go
   cf clone xalanq      拉取 xalanq 的所有提交代码。
   cf upgrade           从 GitHub 更新 "cf" 到最新版。
 
-注意:
-  <problem-id>         表示题目的 id，比如 "a" 或者 "A"，不区分大小写。
-  <contest-id>         表示比赛 id，你可以从比赛链接找到。比如 "https://codeforces.com/contest/1119"
-                       这个链接就是 id 为 "1119" 的比赛。
-  <alias>              模板的名字。
-
 储存的文件:
   cf 会保存数据到以下文件：
 
-  "~/.cfconfig"        这是配置文件，包括用户名、加密后的密码等。
-  "~/.cfsession"       这是会话文件，包括 cookies、用户名等。
+  "~/.cf/config"        这是配置文件，包括模版等信息。
+  "~/.cf/session"       这是会话文件，包括 cookies、用户名、密码等。
 
   "~" 这个符号是系统当前用户的主文件夹。
 
 模板:
   你可以在你的代码里插入一些标识符，当用 cf 生成代码的时候，标识符会按照以下规则替换：
 
-  $%U%$   用户名
-  $%Y%$   年  (e.g. 2019)
-  $%M%$   月  (e.g. 04)
-  $%D%$   日  (e.g. 09)
-  $%h%$   时  (e.g. 08)
-  $%m%$   分  (e.g. 05)
-  $%s%$   秒  (e.g. 00)
+  $%U%$   用户名 (例如 xalanq)
+  $%Y%$   年  (例如 2019)
+  $%M%$   月  (例如 04)
+  $%D%$   日  (例如 09)
+  $%h%$   时  (例如 08)
+  $%m%$   分  (例如 05)
+  $%s%$   秒  (例如 00)
 
 模板内的脚本:
   模板支持三个脚本命令，当使用 "cf test" 时会依次执行：
@@ -173,10 +194,6 @@ $ go build -ldflags "-s -w" cf.go
   $%full%$   代码的文件名 (比如 "a.cpp")
   $%file%$   代码的文件名 (不包括后缀，比如 "a")
   $%rand%$   一个长度为 8 的随机字符串 (只包括 "a-z" "0-9" 范围内的字符)
-
-Options:
-  -h --help
-  --version
 ```
 
 ## 模板例子
@@ -184,18 +201,18 @@ Options:
 当这份模板被 `cf gen` 生成时，模板内部的占位符会替换成相应的内容。
 
 ```
-$%U%$   用户名
-$%Y%$   年  (e.g. 2019)
-$%M%$   月  (e.g. 04)
-$%D%$   日  (e.g. 09)
-$%h%$   时  (e.g. 08)
-$%m%$   分  (e.g. 05)
-$%s%$   秒  (e.g. 00)
+$%U%$   用户名 (例如 xalanq)
+$%Y%$   年  (例如 2019)
+$%M%$   月  (例如 04)
+$%D%$   日  (例如 09)
+$%h%$   时  (例如 08)
+$%m%$   分  (例如 05)
+$%s%$   秒  (例如 00)
 ```
 
 ```cpp
 /* Generated by powerful Codeforces Tool
- * You can download the binary file in here https://github.com/xalanq/cf-tool
+ * You can download the binary file in here https://github.com/xalanq/cf-tool (Windows, macOS, Linux)
  * Author: $%U%$
  * Time: $%Y%$-$%M%$-$%D%$ $%h%$:$%m%$:$%s%$
 **/

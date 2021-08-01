@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
-	"strings"
+
+	"github.com/docopt/docopt-go"
 
 	"github.com/fatih/color"
 	"github.com/xalanq/cf-tool/client"
@@ -16,73 +16,43 @@ import (
 	"github.com/xalanq/cf-tool/util"
 )
 
-// Eval args
-func Eval(args map[string]interface{}) error {
-	if args["config"].(bool) {
-		return Config(args)
-	} else if args["submit"].(bool) {
-		return Submit(args)
-	} else if args["list"].(bool) {
-		return List(args)
-	} else if args["parse"].(bool) {
-		return Parse(args)
-	} else if args["gen"].(bool) {
-		return Gen(args)
-	} else if args["test"].(bool) {
-		return Test(args)
-	} else if args["watch"].(bool) {
-		return Watch(args)
-	} else if args["open"].(bool) {
-		return Open(args)
-	} else if args["stand"].(bool) {
-		return Stand(args)
-	} else if args["sid"].(bool) {
-		return Sid(args)
-	} else if args["race"].(bool) {
-		return Race(args)
-	} else if args["pull"].(bool) {
-		return Pull(args)
-	} else if args["clone"].(bool) {
-		return Clone(args)
-	} else if args["upgrade"].(bool) {
-		return Upgrade(args["{version}"].(string))
+// Eval opts
+func Eval(opts docopt.Opts) error {
+	Args = &ParsedArgs{}
+	opts.Bind(Args)
+	if err := parseArgs(opts); err != nil {
+		return err
+	}
+	if Args.Config {
+		return Config()
+	} else if Args.Submit {
+		return Submit()
+	} else if Args.List {
+		return List()
+	} else if Args.Parse {
+		return Parse()
+	} else if Args.Gen {
+		return Gen()
+	} else if Args.Test {
+		return Test()
+	} else if Args.Watch {
+		return Watch()
+	} else if Args.Open {
+		return Open()
+	} else if Args.Stand {
+		return Stand()
+	} else if Args.Sid {
+		return Sid()
+	} else if Args.Race {
+		return Race()
+	} else if Args.Pull {
+		return Pull()
+	} else if Args.Clone {
+		return Clone()
+	} else if Args.Upgrade {
+		return Upgrade()
 	}
 	return nil
-}
-
-func getContestID(args map[string]interface{}) (string, error) {
-	if c, ok := args["<contest-id>"].(string); ok {
-		if _, err := strconv.Atoi(c); err == nil {
-			return c, nil
-		}
-		return "", fmt.Errorf(`Contest should be a number instead of "%v"`, c)
-	}
-	path, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		c := filepath.Base(path)
-		if _, err := strconv.Atoi(c); err == nil {
-			return c, nil
-		}
-		if filepath.Dir(path) == path {
-			break
-		}
-		path = filepath.Dir(path)
-	}
-	return "", errors.New("Cannot find any valid contest id")
-}
-
-func getProblemID(args map[string]interface{}) (string, error) {
-	if p, ok := args["<problem-id>"].(string); ok {
-		return strings.ToLower(p), nil
-	}
-	path, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return strings.ToLower(filepath.Base(path)), nil
 }
 
 func getSampleID() (samples []string) {
@@ -115,7 +85,7 @@ type CodeList struct {
 	Index []int
 }
 
-func getCode(args map[string]interface{}, templates []config.CodeTemplate) (codes []CodeList) {
+func getCode(filename string, templates []config.CodeTemplate) (codes []CodeList, err error) {
 	mp := make(map[string][]int)
 	for i, temp := range templates {
 		suffixMap := map[string]bool{}
@@ -128,12 +98,12 @@ func getCode(args map[string]interface{}, templates []config.CodeTemplate) (code
 		}
 	}
 
-	if filename, ok := args["<filename>"].(string); ok {
+	if filename != "" {
 		ext := filepath.Ext(filename)
 		if idx, ok := mp[ext]; ok {
-			return []CodeList{CodeList{filename, idx}}
+			return []CodeList{CodeList{filename, idx}}, nil
 		}
-		return
+		return nil, fmt.Errorf("%v can not match any template. You could add a new template by `cf config`", filename)
 	}
 
 	path, err := os.Getwd()
@@ -153,11 +123,14 @@ func getCode(args map[string]interface{}, templates []config.CodeTemplate) (code
 		}
 	}
 
-	return codes
+	return codes, nil
 }
 
-func getOneCode(args map[string]interface{}, templates []config.CodeTemplate) (name string, index int, err error) {
-	codes := getCode(args, templates)
+func getOneCode(filename string, templates []config.CodeTemplate) (name string, index int, err error) {
+	codes, err := getCode(filename, templates)
+	if err != nil {
+		return
+	}
 	if len(codes) < 1 {
 		return "", 0, errors.New("Cannot find any code.\nMaybe you should add a new template by `cf config`")
 	}
@@ -180,14 +153,10 @@ func getOneCode(args map[string]interface{}, templates []config.CodeTemplate) (n
 	return codes[0].Name, codes[0].Index[0], nil
 }
 
-func loginAgain(cfg *config.Config, cln *client.Client, err error) error {
+func loginAgain(cln *client.Client, err error) error {
 	if err != nil && err.Error() == client.ErrorNotLogged {
 		color.Red("Not logged. Try to login\n")
-		password, e := cfg.DecryptPassword()
-		if e != nil {
-			return e
-		}
-		err = cln.Login(cfg.Username, password)
+		err = cln.Login()
 	}
 	return err
 }

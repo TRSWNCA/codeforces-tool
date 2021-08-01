@@ -2,12 +2,10 @@ package client
 
 import (
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"regexp"
 	"strings"
 
-	"github.com/fatih/color"
+	"github.com/xalanq/cf-tool/util"
 )
 
 // StatisInfo statis information
@@ -74,23 +72,22 @@ func findProblems(body []byte) ([]StatisInfo, error) {
 	return ret, nil
 }
 
-// StatisContest get contest problems statis
-func (c *Client) StatisContest(contestID string) (problems []StatisInfo, err error) {
-	color.Cyan(ToGym("Get statis in contest %v\n", contestID), contestID)
-
-	URL := ToGym(fmt.Sprintf(c.Host+"/contest/%v", contestID), contestID)
-	resp, err := c.client.Get(URL)
+// Statis get statis
+func (c *Client) Statis(info Info) (problems []StatisInfo, err error) {
+	URL, err := info.ProblemSetURL(c.host)
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	if info.ProblemType == "acmsguru" {
+		return nil, errors.New(ErrorNotSupportAcmsguru)
+	}
+
+	body, err := util.GetBody(c.client, URL)
 	if err != nil {
 		return
 	}
 
-	err = checkLogin(c.Username, body)
-	if err != nil {
+	if _, err = findHandle(body); err != nil {
 		return
 	}
 
@@ -98,5 +95,6 @@ func (c *Client) StatisContest(contestID string) (problems []StatisInfo, err err
 	if err != nil {
 		return
 	}
+
 	return findProblems(block)
 }

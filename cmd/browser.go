@@ -1,61 +1,44 @@
 package cmd
 
 import (
-	"fmt"
-	"strconv"
-
+	"github.com/fatih/color"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/xalanq/cf-tool/client"
 	"github.com/xalanq/cf-tool/config"
 )
 
+func openURL(url string) error {
+	color.Green("Open %v", url)
+	return open.Run(url)
+}
+
 // Open command
-func Open(args map[string]interface{}) error {
-	contestID, err := getContestID(args)
+func Open() (err error) {
+	URL, err := Args.Info.OpenURL(config.Instance.Host)
 	if err != nil {
-		return err
+		return
 	}
-	problemID, err := getProblemID(args)
-	if err != nil {
-		return err
-	}
-	if problemID == contestID {
-		return open.Run(client.ToGym(fmt.Sprintf(client.New(config.SessionPath).Host+"/contest/%v", contestID), contestID))
-	}
-	return open.Run(client.ToGym(fmt.Sprintf(client.New(config.SessionPath).Host+"/contest/%v/problem/%v", contestID, problemID), contestID))
+	return openURL(URL)
 }
 
 // Stand command
-func Stand(args map[string]interface{}) error {
-	contestID, err := getContestID(args)
+func Stand() (err error) {
+	URL, err := Args.Info.StandingsURL(config.Instance.Host)
 	if err != nil {
-		return err
+		return
 	}
-	return open.Run(client.ToGym(fmt.Sprintf(client.New(config.SessionPath).Host+"/contest/%v/standings", contestID), contestID))
+	return openURL(URL)
 }
 
 // Sid command
-func Sid(args map[string]interface{}) error {
-	contestID := ""
-	submissionID := ""
-	cln := client.New(config.SessionPath)
-	if args["<submission-id>"] == nil {
-		if cln.LastSubmission != nil {
-			contestID = cln.LastSubmission.ContestID
-			submissionID = cln.LastSubmission.SubmissionID
-		} else {
-			return fmt.Errorf(`You have not submitted any problem yet`)
-		}
-	} else {
-		var err error
-		contestID, err = getContestID(args)
-		if err != nil {
-			return err
-		}
-		submissionID, _ = args["<submission-id>"].(string)
-		if _, err = strconv.Atoi(submissionID); err != nil {
-			return err
-		}
+func Sid() (err error) {
+	info := Args.Info
+	if info.SubmissionID == "" && client.Instance.LastSubmission != nil {
+		info = *client.Instance.LastSubmission
 	}
-	return open.Run(client.ToGym(fmt.Sprintf(cln.Host+"/contest/%v/submission/%v", contestID, submissionID), contestID))
+	URL, err := info.SubmissionURL(config.Instance.Host)
+	if err != nil {
+		return
+	}
+	return openURL(URL)
 }

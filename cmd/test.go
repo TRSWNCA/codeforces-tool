@@ -149,21 +149,18 @@ func judge(sampleID, command string) error {
 }
 
 // Test command
-func Test(args map[string]interface{}) error {
-	cfg := config.New(config.ConfigPath)
+func Test() (err error) {
+	cfg := config.Instance
 	if len(cfg.Template) == 0 {
 		return errors.New("You have to add at least one code template by `cf config`")
 	}
-
 	samples := getSampleID()
 	if len(samples) == 0 {
-		color.Red("There is no sample data")
-		return nil
+		return errors.New("Cannot find any sample file")
 	}
-
-	filename, index, err := getOneCode(args, cfg.Template)
+	filename, index, err := getOneCode(Args.File, cfg.Template)
 	if err != nil {
-		return err
+		return
 	}
 	template := cfg.Template[index]
 	path, full := filepath.Split(filename)
@@ -191,8 +188,8 @@ func Test(args map[string]interface{}) error {
 		return nil
 	}
 
-	if err := run(template.BeforeScript); err != nil {
-		return err
+	if err = run(template.BeforeScript); err != nil {
+		return
 	}
 	if s := filter(template.Script); len(s) > 0 {
 		for _, i := range samples {
@@ -202,8 +199,7 @@ func Test(args map[string]interface{}) error {
 			}
 		}
 	} else {
-		color.Red("Invalid script command. Please check config file")
-		return nil
+		return errors.New("Invalid script command. Please check config file")
 	}
 	return run(template.AfterScript)
 }

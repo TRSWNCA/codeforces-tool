@@ -1,56 +1,33 @@
 package cmd
 
 import (
-	"fmt"
 	"io/ioutil"
-	"os"
-	"strings"
 
 	"github.com/xalanq/cf-tool/client"
 	"github.com/xalanq/cf-tool/config"
 )
 
 // Submit command
-func Submit(args map[string]interface{}) error {
-	contestID, err := getContestID(args)
+func Submit() (err error) {
+	cln := client.Instance
+	cfg := config.Instance
+	info := Args.Info
+	filename, index, err := getOneCode(Args.File, cfg.Template)
 	if err != nil {
-		return err
-	}
-	problemID, err := getProblemID(args)
-	if err != nil {
-		return err
-	}
-	if problemID == contestID {
-		return fmt.Errorf("contestID: %v, problemID: %v is not valid", contestID, problemID)
-	}
-	cfg := config.New(config.ConfigPath)
-	filename, index, err := getOneCode(args, cfg.Template)
-	if err != nil {
-		return err
-	}
-	template := cfg.Template[index]
-
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	bytes, err := ioutil.ReadAll(file)
-
-	if err != nil {
-		return err
+		return
 	}
 
+	bytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return
+	}
 	source := string(bytes)
-	problemID = strings.ToUpper(problemID)
-	lang := template.Lang
-	cln := client.New(config.SessionPath)
-	if err = cln.SubmitContest(contestID, problemID, lang, source); err != nil {
-		if err = loginAgain(cfg, cln, err); err == nil {
-			err = cln.SubmitContest(contestID, problemID, lang, source)
+
+	lang := cfg.Template[index].Lang
+	if err = cln.Submit(info, lang, source); err != nil {
+		if err = loginAgain(cln, err); err == nil {
+			err = cln.Submit(info, lang, source)
 		}
 	}
-
-	return err
+	return
 }
